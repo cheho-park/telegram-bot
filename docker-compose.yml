@@ -1,0 +1,41 @@
+version: "3.8"
+services:
+    app:
+        build: .
+        container_name: telegram_bot_app
+        restart: unless-stopped
+        env_file: .env
+        environment:
+            - BOT_TOKEN
+            - SUPABASE_URL
+            - SUPABASE_KEY
+            - DATABASE_URL
+            - OPENWEATHER_TOKEN
+        depends_on:
+            - db
+        command: sh -c "python migrate.py && python bot.py"
+        # Fix DNS resolution for external services
+        dns:
+            - 8.8.8.8
+            - 8.8.4.4
+
+    db:
+        image: postgres:15
+        container_name: telegram_bot_db
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: postgres
+        volumes:
+            - pgdata:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+
+volumes:
+    pgdata:
+        driver: local
