@@ -1,3 +1,16 @@
+# Python
 __pycache__/
-.env
 *.pyc
+*.pyo
+*.pyd
+.venv/
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# 기타
+.DS_Store
+*.zip
+*.tar.gz
