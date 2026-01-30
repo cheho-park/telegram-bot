@@ -105,6 +105,23 @@ async def me(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("등록된 정보가 없습니다.")
 
 
+async def _handle_level_up(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict) -> None:
+    """Handle level-up notification when user completes attendance.
+    
+    Checks if the attendance record contains level-up data and sends
+    appropriate message to the user.
+    """
+    from ..utils import send_temporary_message
+    
+    old_level = data.get("old_level") if isinstance(data, dict) else None
+    new_level = data.get("new_level") if isinstance(data, dict) else None
+    
+    if old_level and new_level and new_level > old_level:
+        await send_temporary_message(update, context, f"출석 완료! 축하합니다 — 레벨업! {old_level} -> {new_level}", ttl=8)
+    else:
+        await send_temporary_message(update, context, "출석 완료! 좋은 하루 되세요.", ttl=6)
+
+
 async def attend(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     if user is None:
@@ -129,14 +146,7 @@ async def attend(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
         data = res.get("data") if isinstance(res, dict) else getattr(res, "data", None)
         if data:
-            # determine if level-up
-            old_level = data.get("old_level") if isinstance(data, dict) else None
-            new_level = data.get("new_level") if isinstance(data, dict) else None
-            from ..utils import send_temporary_message
-            if old_level and new_level and new_level > old_level:
-                await send_temporary_message(update, context, f"출석 완료! 축하합니다 — 레벨업! {old_level} -> {new_level}", ttl=8)
-            else:
-                await send_temporary_message(update, context, "출석 완료! 좋은 하루 되세요.", ttl=6)
+            await _handle_level_up(update, context, data)
         await update.message.reply_text("출석 완료! 좋은 하루 되세요.")
 
 
@@ -173,27 +183,22 @@ async def attendance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     await update.message.reply_text(text)
 
 
-async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # Award XP for non-command text messages, with cooldown
-    user = update.effective_user
-    if user is None:
-        return
-    if not update.message or not update.message.text:
-        return
-    # ignore commands
-    if update.message.text.startswith("/"):
-        return
-
-    # configuration
+async def _calculate_and_award_xp(user_id: int) -> None:
+    """Calculate and award XP for a message, respecting cooldown.
+    
+    Configuration:
+    - MESSAGE_XP: 5 XP per message
+    - MESSAGE_COOLDOWN_SEC: 60 seconds between XP awards
+    """
     MESSAGE_XP = 5
     MESSAGE_COOLDOWN_SEC = 60
 
     try:
         # Use cached info to avoid a DB call in most cases
-        info = await db.get_xp_info(user.id)
+        info = await db.get_xp_info(user_id)
     except Exception as e:
         # Log the error for debugging
-        print(f"[ERROR] on_message: Failed to get xp info for user {user.id}: {type(e).__name__}: {e}")
+        print(f"[ERROR] _calculate_and_award_xp: Failed to get xp info for user {user_id}: {type(e).__name__}: {e}")
         return
 
     last_xp = info.get("last_xp_at")
@@ -214,11 +219,25 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     # award xp
     try:
         # Queue XP for background flush for messages (fast path)
-        await xp_service.queue_xp(user.id, MESSAGE_XP)
+        await xp_service.queue_xp(user_id, MESSAGE_XP)
     except Exception as e:
         # Log the error for debugging
-        print(f"[ERROR] on_message: Failed to queue xp for user {user.id}: {type(e).__name__}: {e}")
+        print(f"[ERROR] _calculate_and_award_xp: Failed to queue xp for user {user_id}: {type(e).__name__}: {e}")
         pass
+
+
+async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Award XP for non-command text messages, with cooldown
+    user = update.effective_user
+    if user is None:
+        return
+    if not update.message or not update.message.text:
+        return
+    # ignore commands
+    if update.message.text.startswith("/"):
+        return
+
+    await _calculate_and_award_xp(user.id)
 
 
 async def streak(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
