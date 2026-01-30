@@ -1,24 +1,34 @@
 """Application setup and entrypoint for the Telegram bot."""
+
 import os
+import asyncio
 from dotenv import load_dotenv
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
+
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    filters,
+)
 
 from .handlers import core as core_handlers
 from .handlers import weather as weather_handlers
-from .services import weather_service
-from telegram.ext import CallbackQueryHandler
 from .services import xp_service
+from .services import weather_service
 
 
 def build_app():
+    """Build and configure the Telegram Application."""
     load_dotenv()
+
     token = os.getenv("BOT_TOKEN")
     if not token:
         raise RuntimeError("BOT_TOKEN not set in environment")
 
     app = ApplicationBuilder().token(token).build()
 
-    # register handlers
+    # Core command handlers
     app.add_handler(CommandHandler("start", core_handlers.start))
     app.add_handler(CommandHandler("help", core_handlers.help_command))
     app.add_handler(CommandHandler("ping", core_handlers.ping))
@@ -29,53 +39,56 @@ def build_app():
     app.add_handler(CommandHandler("streak", core_handlers.streak))
     app.add_handler(CommandHandler("xp", core_handlers.xp))
     app.add_handler(CommandHandler("leaderboard", core_handlers.leaderboard))
-    # message handler for awarding XP on normal messages (non-commands)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, core_handlers.on_message))
+
+    # XP awarding for normal messages
+    app.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, core_handlers.on_message)
+    )
+
     # Weather handlers
     app.add_handler(CommandHandler("weather", weather_handlers.weather_cmd))
     app.add_handler(CallbackQueryHandler(weather_handlers.button_handler))
-    # Text handler for adding locations (when waiting_for_location is set)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, weather_handlers.add_location))
-
-    # start XP background flush task (started in main)
+    app.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, weather_handlers.add_location)
+    )
 
     return app
 
 
-def main() -> None:
-    app = build_app()
-    print("봇을 시작합니다. 중지하려면 Ctrl-C를 누르세요.")
-    
-    # Callback when app starts (after event loop is running)
-    async def post_init_cb(app):
-        """Called after application starts, before it begins handling updates."""
-        app._xp_task = app.create_task(xp_service.start_background_flush(interval_seconds=2.0))
-        print("XP background flush task started.")
-    
-    app.post_init = post_init_cb
-    
-    try:
-        app.run_polling()
-    finally:
-        # flush pending xp on shutdown
-        import asyncio as _asyncio
-        try:
-            _asyncio.get_event_loop().run_until_complete(xp_service.flush_pending())
-        except Exception:
-            # last resort: run in a new loop
-            _asyncio.run(xp_service.flush_pending())
-        # cancel background task
-        # Close weather client gracefully
-        try:
-            _asyncio.get_event_loop().run_until_complete(weather_service.close_client())
-        except Exception:
-            try:
-                _asyncio.run(weather_service.close_client())
-            except Exception:
-                pass
+async def post_init_cb(app):
+    """Called after the application starts and the event loop is running."""
+    xp_task = app.create_task(
+        xp_service.start_background_flush(interval_seconds=2.0)
+    )
 
-        if getattr(app, "_xp_task", None):
-            try:
-                app._xp_task.cancel()
-            except Exception:
-                pass
+    # Store task reference in an officially supported container
+    app.bot_data["xp_task"] = xp_task
+
+
+async def post_shutdown_cb(app):
+    """Gracefully shut down background tasks and services."""
+    # Cancel XP background task
+    xp_task = app.bot_data.get("xp_task")
+    if xp_task:
+        xp_task.cancel()
+        try:
+            await xp_task
+        except asyncio.CancelledError:
+            pass
+
+    # Flush remaining XP data
+    await xp_service.flush_pending()
+
+    # Close weather service resources
+    await weather_service.close_client()
+
+
+def main() -> None:
+    """Application entrypoint."""
+    app = build_app()
+
+    app.post_init = post_init_cb
+    app.post_shutdown = post_shutdown_cb
+
+    print("봇을 시작합니다. 중지하려면 Ctrl-C를 누르세요.")
+    app.run_polling()
