@@ -11,6 +11,22 @@ from telegram.ext import ContextTypes
 KST = datetime.timezone(datetime.timedelta(hours=9))
 
 
+def extract_ttl_from_args(args: List[str]) -> float | None:
+    """Extract ttl value from command arguments like ['ttl:3'].
+    
+    Returns ttl value in seconds if found, otherwise None.
+    """
+    if not args:
+        return None
+    for arg in args:
+        if isinstance(arg, str) and arg.startswith("ttl:"):
+            try:
+                return float(arg[4:])
+            except (ValueError, IndexError):
+                pass
+    return None
+
+
 def parse_iso_to_kst(iso: str) -> datetime.datetime:
     """Parse an ISO timestamp and return it as a KST-aware datetime."""
     if iso is None:
@@ -63,8 +79,8 @@ def format_leaderboard(rows: Iterable[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-async def send_temporary_message(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, ttl: float = 8.0, **kwargs):
-    """Send a message and delete it after `ttl` seconds.
+async def send_temporary_message(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, ttl: float = None, **kwargs):
+    """Send a message. If ttl is provided, delete it after `ttl` seconds.
 
     Returns the sent message object. `kwargs` are passed to `reply_text` (e.g., parse_mode, reply_markup).
     """
@@ -76,6 +92,10 @@ async def send_temporary_message(update: Update, context: ContextTypes.DEFAULT_T
         if chat_id is None:
             return None
         sent = await context.bot.send_message(chat_id=chat_id, text=text, **kwargs)
+
+    # Only schedule deletion if ttl is provided
+    if ttl is None:
+        return sent
 
     async def _del_later(msg, delay: float):
         try:
@@ -98,5 +118,7 @@ async def send_temporary_message(update: Update, context: ContextTypes.DEFAULT_T
             loop.create_task(_del_later(sent, float(ttl)))
         except Exception:
             pass
+    
+    return sent
 
     return sent

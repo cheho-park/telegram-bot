@@ -12,12 +12,18 @@ from datetime import datetime, timedelta, timezone
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    from ..utils import send_temporary_message
-    await send_temporary_message(update, context, "안녕하세요! 봇 뼈대입니다. /help로 도움말 확인하세요.", ttl=6)
+    from ..utils import send_temporary_message, extract_ttl_from_args
+    ttl = extract_ttl_from_args(context.args)
+    await send_temporary_message(update, context, "안녕하세요! 봇 뼈대입니다. /help로 도움말 확인하세요.", ttl=ttl)
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    from ..utils import send_temporary_message
+    from ..utils import send_temporary_message, extract_ttl_from_args
+    ttl = extract_ttl_from_args(context.args)
     text = (
         "🏁 /start — 시작\n"
         "❓ /help — 도움말\n"
@@ -30,16 +36,32 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "🔥 /streak — 연속 출석일수 조회\n"
         "⭐ /xp — 내 XP 및 레벨 조회\n"
         "🏆 /leaderboard [n] — XP 기준 상위 n명 확인\n"
+        "\n"
+        "💬 메시지 자동 삭제\n"
+        "• 사용자 명령: 자동으로 즉시 삭제\n"
+        "• 봇 응답: 기본 유지 (ttl:시간 으로 선택 삭제)\n"
+        "예: /help ttl:5 → 5초 후 삭제\n"
     )
-    await send_temporary_message(update, context, text, ttl=10)
+    await send_temporary_message(update, context, text, ttl=ttl)
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
 
 
 async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    from ..utils import send_temporary_message
-    await send_temporary_message(update, context, "pong", ttl=4)
+    from ..utils import send_temporary_message, extract_ttl_from_args
+    ttl = extract_ttl_from_args(context.args)
+    await send_temporary_message(update, context, "pong", ttl=ttl)
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
 
 
 async def register(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    from ..utils import extract_ttl_from_args
+    ttl = extract_ttl_from_args(context.args)
     user = update.effective_user
     if user is None:
         await update.message.reply_text("사용자 정보를 가져올 수 없습니다.")
@@ -55,7 +77,11 @@ async def register(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if existing_data:
         username_text = utils.format_username(user.username, user.id)
         from ..utils import send_temporary_message
-        await send_temporary_message(update, context, f"이미 등록되어 있습니다 — {username_text}", ttl=6)
+        await send_temporary_message(update, context, f"이미 등록되어 있습니다 — {username_text}", ttl=ttl)
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
         return
 
     try:
@@ -68,12 +94,18 @@ async def register(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if data:
         username_text = utils.format_username(user.username, user.id)
         from ..utils import send_temporary_message
-        await send_temporary_message(update, context, f"등록되었습니다 — 환영합니다 {username_text}! 🎉\n레벨: 1, XP: 0", ttl=7)
+        await send_temporary_message(update, context, f"등록되었습니다 — 환영합니다 {username_text}! 🎉\n레벨: 1, XP: 0", ttl=ttl)
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
     else:
         await update.message.reply_text(f"등록 결과: {res}")
 
 
 async def me(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    from ..utils import extract_ttl_from_args
+    ttl = extract_ttl_from_args(context.args)
     user = update.effective_user
     if user is None:
         await update.message.reply_text("사용자 정보를 가져올 수 없습니다.")
@@ -98,9 +130,14 @@ async def me(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         level = _get("level", 1)
         next_xp = db.xp_for_level(level + 1)
         last_xp = _get("last_xp_at")
-        await update.message.reply_text(
-            f"{username}\n{utils.format_xp_progress(xp, level, next_xp)}\n마지막 활동: {utils.format_ts_kst(last_xp)}"
+        from ..utils import send_temporary_message
+        await send_temporary_message(update, context,
+            f"{username}\n{utils.format_xp_progress(xp, level, next_xp)}\n마지막 활동: {utils.format_ts_kst(last_xp)}", ttl=ttl
         )
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
     else:
         await update.message.reply_text("등록된 정보가 없습니다.")
 
@@ -123,6 +160,8 @@ async def _handle_level_up(update: Update, context: ContextTypes.DEFAULT_TYPE, d
 
 
 async def attend(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    from ..utils import extract_ttl_from_args
+    ttl = extract_ttl_from_args(context.args)
     user = update.effective_user
     if user is None:
         await update.message.reply_text("사용자 정보를 가져올 수 없습니다.")
@@ -132,7 +171,11 @@ async def attend(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         already = await db.attended_today(user.id)
     except Exception as e:
         from ..utils import send_temporary_message
-        await send_temporary_message(update, context, f"출석 확인 중 오류가 발생했습니다: {e}", ttl=6)
+        await send_temporary_message(update, context, f"출석 확인 중 오류가 발생했습니다: {e}", ttl=ttl)
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
         return
 
     if already:
@@ -141,16 +184,26 @@ async def attend(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             res = await db.record_attendance(user.id)
         except Exception as e:
             from ..utils import send_temporary_message
-            await send_temporary_message(update, context, f"출석 처리 중 오류가 발생했습니다: {e}", ttl=6)
+            await send_temporary_message(update, context, f"출석 처리 중 오류가 발생했습니다: {e}", ttl=ttl)
+            try:
+                await update.message.delete()
+            except Exception:
+                pass
             return
 
         data = res.get("data") if isinstance(res, dict) else getattr(res, "data", None)
         if data:
             await _handle_level_up(update, context, data)
         await update.message.reply_text("출석 완료! 좋은 하루 되세요.")
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
 
 
 async def attendance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    from ..utils import extract_ttl_from_args
+    ttl = extract_ttl_from_args(context.args)
     user = update.effective_user
     if user is None:
         await update.message.reply_text("사용자 정보를 가져올 수 없습니다.")
@@ -180,7 +233,12 @@ async def attendance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         lines.append(f"- {utils.format_ts_kst(ts)}")
 
     text = "최근 출석 기록:\n" + "\n".join(lines)
-    await update.message.reply_text(text)
+    from ..utils import send_temporary_message
+    await send_temporary_message(update, context, text, ttl=ttl)
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
 
 
 async def _calculate_and_award_xp(user_id: int) -> None:
@@ -241,6 +299,8 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
 async def streak(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    from ..utils import extract_ttl_from_args
+    ttl = extract_ttl_from_args(context.args)
     user = update.effective_user
     if user is None:
         await update.message.reply_text("사용자 정보를 가져올 수 없습니다.")
@@ -252,10 +312,17 @@ async def streak(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(f"연속 출석 조회 중 오류가 발생했습니다: {e}")
         return
 
-    await update.message.reply_text(f"🔥 현재 연속 출석: {s}일")
+    from ..utils import send_temporary_message
+    await send_temporary_message(update, context, f"🔥 현재 연속 출석: {s}일", ttl=ttl)
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
 
 
 async def xp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    from ..utils import extract_ttl_from_args
+    ttl = extract_ttl_from_args(context.args)
     user = update.effective_user
     if user is None:
         await update.message.reply_text("사용자 정보를 가져올 수 없습니다.")
@@ -270,10 +337,17 @@ async def xp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     xp_val = info.get("xp", 0)
     level = info.get("level", 1)
     next_xp = info.get("next_xp") or db.xp_for_level(level + 1)
-    await update.message.reply_text(utils.format_xp_progress(xp_val, level, next_xp))
+    from ..utils import send_temporary_message
+    await send_temporary_message(update, context, utils.format_xp_progress(xp_val, level, next_xp), ttl=ttl)
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
 
 
 async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    from ..utils import extract_ttl_from_args
+    ttl = extract_ttl_from_args(context.args)
     limit = 10
     if context.args:
         try:
@@ -292,4 +366,9 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await update.message.reply_text("리더보드가 비어 있습니다.")
         return
 
-    await update.message.reply_text("🏆 리더보드:\n" + utils.format_leaderboard(data))
+    from ..utils import send_temporary_message
+    await send_temporary_message(update, context, "🏆 리더보드:\n" + utils.format_leaderboard(data), ttl=ttl)
+    try:
+        await update.message.delete()
+    except Exception:
+        pass

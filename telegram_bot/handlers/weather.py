@@ -49,6 +49,10 @@ async def weather_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=generate_keyboard(context.user_data["favorites"]),
         parse_mode="HTML",
     )
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
 
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -141,14 +145,26 @@ async def add_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     city_api_name = (user_input if not isinstance(user_input, str) else user_input)
     if not await weather_service.get_weather_raw(city_api_name):
         await update.message.reply_text("⚠️ 올바른 지역명을 입력하세요. (API에서 인식되지 않음)")
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
         return
     favorites = context.user_data.setdefault("favorites", DEFAULT_CITIES.copy())
     if any(api == city_api_name for _, api in favorites):
         await update.message.reply_text(f"⚠️ '{user_input}'은 이미 즐겨찾기에 있습니다.")
         context.user_data["waiting_for_location"] = False
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
         return
     favorites.append((user_input, city_api_name))
     context.user_data["waiting_for_location"] = False
     await update.message.reply_text(
         f"✅ '{user_input}' 지역이 즐겨찾기에 추가되었습니다.", reply_markup=generate_keyboard(favorites)
     )
+    try:
+        await update.message.delete()
+    except Exception:
+        pass

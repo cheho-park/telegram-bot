@@ -4,9 +4,9 @@
 
 ## 요구사항
 
--   Python 3.8+
--   `python-telegram-bot` (버전 20 이상 권장)
--   `python-dotenv` (환경변수 로드용)
+- Python 3.8+
+- `python-telegram-bot` (버전 20 이상 권장)
+- `python-dotenv` (환경변수 로드용)
 
 ## 설치 (PowerShell)
 
@@ -35,13 +35,32 @@ docker-compose run --rm app python migrate.py
 
 ## 기본 명령
 
--   /start — 시작 인사
--   /help — 도움말
--   /ping — 응답 확인
--   /register — Supabase의 `users` 테이블에 사용자 등록 (처음 한 번 사용)
--   /me — 등록된 내 정보 조회
--   /xp — 내 XP 및 레벨 조회
--   /leaderboard — XP 기준 상위 사용자 확인
+- /start — 시작 인사
+- /help — 도움말
+- /ping — 응답 확인
+- /register — Supabase의 `users` 테이블에 사용자 등록 (처음 한 번 사용)
+- /me — 등록된 내 정보 조회
+- /weather — 실시간 날씨 확인
+- /attend — 출석 체크 (하루 1회)
+- /attendance [n] — 내 출석 기록 조회 (최근 n개)
+- /streak — 연속 출석일수 조회
+- /xp — 내 XP 및 레벨 조회
+- /leaderboard [n] — XP 기준 상위 n명 확인
+
+### 메시지 자동 삭제 기능
+
+봇은 다음과 같이 동작합니다:
+
+- **사용자 명령 메시지**: 자동으로 즉시 삭제됨
+- **봇 응답 메시지**: 기본적으로 계속 유지됨
+
+봇 응답을 일시적으로 표시하고 싶으면 `ttl:시간(초)` 파라미터를 사용하세요:
+
+```
+/help ttl:3        → 도움말이 3초 후 삭제됨
+/xp ttl:5          → XP 정보가 5초 후 삭제됨
+/leaderboard ttl:10 → 리더보드가 10초 후 삭제됨
+```
 
 ## 환경변수
 
@@ -82,10 +101,11 @@ python migrate.py
 
 `DATABASE_URL`은 Supabase 프로젝트의 Settings > Database > Connection string 에서 확인할 수 있습니다. 서비스 역할 키와 DB 접속 문자열을 안전하게 관리하세요.
 
--   출석 시 기본 보상으로 10 XP를 지급하며, XP가 일정 수치에 도달하면 레벨업합니다. (레벨 공식: level = floor(sqrt(xp/100))+1)
--   메시지 전송 시 기본 보상으로 5 XP(쿨다운 60초)를 지급하고, 출석 시 기본 보상으로 10 XP를 지급합니다. XP가 일정 수치에 도달하면 레벨업합니다. (레벨 공식: level = floor(sqrt(xp/100))+1)
--   출석, 출석 기록, 연속 출석(streak)은 KST (UTC+9) 기준으로 계산합니다.
--   성능 최적화: 유저 정보와 리더보드 결과를 짧은 TTL(몇 초)로 메모리 캐시하여 메시지 기반 XP 집계 등의 상호작용에서 응답 지연을 줄였습니다. 메시지 XP 처리는 비동기로 백그라운드에 등록되어 빠른 응답을 제공합니다.
+- 출석 시 기본 보상으로 10 XP를 지급하며, XP가 일정 수치에 도달하면 레벨업합니다. (레벨 공식: level = floor(sqrt(xp/100))+1)
+- 메시지 전송 시 기본 보상으로 5 XP(쿨다운 60초)를 지급하고, 출석 시 기본 보상으로 10 XP를 지급합니다. XP가 일정 수치에 도달하면 레벨업합니다. (레벨 공식: level = floor(sqrt(xp/100))+1)
+- 출석, 출석 기록, 연속 출석(streak)은 KST (UTC+9) 기준으로 계산합니다.
+- 성능 최적화: 유저 정보와 리더보드 결과를 짧은 TTL(몇 초)로 메모리 캐시하여 메시지 기반 XP 집계 등의 상호작용에서 응답 지연을 줄였습니다. 메시지 XP 처리는 비동기로 백그라운드에 등록되어 빠른 응답을 제공합니다.
+- 채팅창 관리: 사용자 명령 메시지는 자동으로 즉시 삭제되며, `ttl:시간` 파라미터로 봇 응답을 선택적으로 삭제할 수 있습니다.
 
 ### 배포(예: 서버에서 Docker 사용)
 
@@ -178,8 +198,8 @@ sudo systemctl enable --now telegram_bot.service
 
 주의사항:
 
--   현재 XP 캐시/큐는 컨테이너 내부 메모리를 사용합니다. 다중 인스턴스 환경에서는 Redis 등을 사용하여 중앙화하도록 변경해야 합니다.
--   민감한 정보(BOT_TOKEN, SUPABASE_KEY 등)는 안전하게 관리하세요(Secrets Manager, Docker Secrets 등).
+- 현재 XP 캐시/큐는 컨테이너 내부 메모리를 사용합니다. 다중 인스턴스 환경에서는 Redis 등을 사용하여 중앙화하도록 변경해야 합니다.
+- 민감한 정보(BOT_TOKEN, SUPABASE_KEY 등)는 안전하게 관리하세요(Secrets Manager, Docker Secrets 등).
 
 ## 예시 출력(사람이 보기 편하게 개선)
 
