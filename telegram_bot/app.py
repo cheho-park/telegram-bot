@@ -14,6 +14,7 @@ from telegram.ext import (
 
 from .handlers import core as core_handlers
 from .handlers import weather as weather_handlers
+from .handlers import fortune as fortune_handlers
 from .services import xp_service
 from .services import weather_service
 
@@ -39,6 +40,7 @@ def build_app():
     app.add_handler(CommandHandler("streak", core_handlers.streak))
     app.add_handler(CommandHandler("xp", core_handlers.xp))
     app.add_handler(CommandHandler("leaderboard", core_handlers.leaderboard))
+    app.add_handler(CommandHandler("fortune", fortune_handlers.fortune))
 
     # XP awarding for normal messages
     app.add_handler(

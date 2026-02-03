@@ -31,6 +31,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "📝 /register — 등록\n"
         "👤 /me — 내 정보\n"
         "🌦️ /weather — 실시간 날씨 확인\n"
+        "🔮 /fortune [random] — 오늘의 운세 (random: 랜덤 운세)\n"
         "📅 /attend — 출석 체크 (하루 1회)\n"
         "📋 /attendance [n] — 내 출석 기록 조회 (최근 n개)\n"
         "🔥 /streak — 연속 출석일수 조회\n"
