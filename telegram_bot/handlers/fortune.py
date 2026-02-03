@@ -6,7 +6,8 @@ import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from ..utils import KST, send_temporary_message, extract_ttl_from_args
+from ..utils import KST, extract_ttl_from_args
+from .telegram_utils import send_temporary_message
 
 
 FORTUNES = [

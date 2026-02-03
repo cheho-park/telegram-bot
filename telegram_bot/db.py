@@ -93,8 +93,10 @@ async def create_user(user_id: int, username: Optional[str]) -> Any:
                 existing = client.table("users").select("*").eq("id", user_id).limit(1).execute()
                 # cache existing
                 data = existing.get("data") if isinstance(existing, dict) else getattr(existing, "data", None)
-                if data:
-                    _cache_set(user_id, data[0] if isinstance(data, (list, tuple)) and data else data)
+                if isinstance(data, (list, tuple)) and data and isinstance(data[0], dict):
+                    _cache_set(user_id, data[0])
+                elif isinstance(data, dict):
+                    _cache_set(user_id, data)
                 return existing
             # otherwise return the original response (propagate error to caller)
             return res

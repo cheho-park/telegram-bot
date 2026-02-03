@@ -13,6 +13,9 @@ from telegram.ext import (
 )
 
 from .handlers import core as core_handlers
+from .handlers import attendance as attendance_handlers
+from .handlers import profile as profile_handlers
+from .handlers import on_message as on_message_handlers
 from .handlers import weather as weather_handlers
 from .handlers import fortune as fortune_handlers
 from .services import xp_service
@@ -33,18 +36,18 @@ def build_app():
     app.add_handler(CommandHandler("start", core_handlers.start))
     app.add_handler(CommandHandler("help", core_handlers.help_command))
     app.add_handler(CommandHandler("ping", core_handlers.ping))
-    app.add_handler(CommandHandler("register", core_handlers.register))
-    app.add_handler(CommandHandler("me", core_handlers.me))
-    app.add_handler(CommandHandler("attend", core_handlers.attend))
-    app.add_handler(CommandHandler("attendance", core_handlers.attendance))
-    app.add_handler(CommandHandler("streak", core_handlers.streak))
-    app.add_handler(CommandHandler("xp", core_handlers.xp))
-    app.add_handler(CommandHandler("leaderboard", core_handlers.leaderboard))
+    app.add_handler(CommandHandler("register", profile_handlers.register))
+    app.add_handler(CommandHandler("me", profile_handlers.me))
+    app.add_handler(CommandHandler("xp", profile_handlers.xp))
+    app.add_handler(CommandHandler("leaderboard", profile_handlers.leaderboard))
+    app.add_handler(CommandHandler("attend", attendance_handlers.attend))
+    app.add_handler(CommandHandler("attendance", attendance_handlers.attendance))
+    app.add_handler(CommandHandler("streak", attendance_handlers.streak))
     app.add_handler(CommandHandler("fortune", fortune_handlers.fortune))
 
     # XP awarding for normal messages
     app.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, core_handlers.on_message)
+        MessageHandler(filters.TEXT & ~filters.COMMAND, on_message_handlers.on_message)
     )
 
     # Weather handlers

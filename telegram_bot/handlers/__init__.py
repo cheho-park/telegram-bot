@@ -1,5 +1,16 @@
-"""Main handler module (migrated into a package for modular handlers)."""
+"""Handler package for modular Telegram handlers."""
+from . import core
 from . import weather
+from . import fortune
+from . import attendance
+from . import profile
+from . import on_message
 
-# Re-export common handlers for legacy imports
-from .core import *
+__all__ = [
+    "core",
+    "weather",
+    "fortune",
+    "attendance",
+    "profile",
+    "on_message",
+]

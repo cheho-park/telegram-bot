@@ -3,9 +3,6 @@ from __future__ import annotations
 import datetime
 from datetime import timezone
 from typing import Any, Dict, Iterable, List
-import asyncio
-from telegram import Update
-from telegram.ext import ContextTypes
 
 
 KST = datetime.timezone(datetime.timedelta(hours=9))
@@ -79,46 +76,12 @@ def format_leaderboard(rows: Iterable[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-async def send_temporary_message(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, ttl: float = None, **kwargs):
-    """Send a message. If ttl is provided, delete it after `ttl` seconds.
-
-    Returns the sent message object. `kwargs` are passed to `reply_text` (e.g., parse_mode, reply_markup).
-    """
-    # Prefer replying to the message if available, otherwise send to chat
-    if getattr(update, "message", None):
-        sent = await update.message.reply_text(text, **kwargs)
-    else:
-        chat_id = update.effective_chat.id if update.effective_chat else None
-        if chat_id is None:
-            return None
-        sent = await context.bot.send_message(chat_id=chat_id, text=text, **kwargs)
-
-    # Only schedule deletion if ttl is provided
-    if ttl is None:
-        return sent
-
-    async def _del_later(msg, delay: float):
-        try:
-            await asyncio.sleep(delay)
-            try:
-                await msg.delete()
-            except Exception:
-                # ignore deletion errors
-                pass
-        except Exception:
-            pass
-
-    # schedule deletion in background
-    try:
-        asyncio.create_task(_del_later(sent, float(ttl)))
-    except RuntimeError:
-        # If no running loop, schedule on next loop when available
-        try:
-            loop = asyncio.get_event_loop()
-            loop.create_task(_del_later(sent, float(ttl)))
-        except Exception:
-            pass
-    
-    return sent
-
-    return sent
+__all__ = [
+    "KST",
+    "extract_ttl_from_args",
+    "parse_iso_to_kst",
+    "format_ts_kst",
+    "format_username",
+    "format_xp_progress",
+    "format_leaderboard",
+]
