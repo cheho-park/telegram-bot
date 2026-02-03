@@ -181,24 +181,30 @@ async def attend(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if already:
         await update.message.reply_text("이미 오늘 출석하셨습니다. :)")
         try:
-            res = await db.record_attendance(user.id)
-        except Exception as e:
-            from ..utils import send_temporary_message
-            await send_temporary_message(update, context, f"출석 처리 중 오류가 발생했습니다: {e}", ttl=ttl)
-            try:
-                await update.message.delete()
-            except Exception:
-                pass
-            return
+            await update.message.delete()
+        except Exception:
+            pass
+        return
 
-        data = res.get("data") if isinstance(res, dict) else getattr(res, "data", None)
-        if data:
-            await _handle_level_up(update, context, data)
-        await update.message.reply_text("출석 완료! 좋은 하루 되세요.")
+    try:
+        res = await db.record_attendance(user.id)
+    except Exception as e:
+        from ..utils import send_temporary_message
+        await send_temporary_message(update, context, f"출석 처리 중 오류가 발생했습니다: {e}", ttl=ttl)
         try:
             await update.message.delete()
         except Exception:
             pass
+        return
+
+    data = res.get("data") if isinstance(res, dict) else getattr(res, "data", None)
+    if data:
+        await _handle_level_up(update, context, data)
+    await update.message.reply_text("출석 완료! 좋은 하루 되세요.")
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
 
 
 async def attendance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
